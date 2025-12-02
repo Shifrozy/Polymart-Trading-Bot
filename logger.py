@@ -55,3 +55,6 @@ def setup_logging(config):
             logging.StreamHandler()
         ]
     )
+    
+    # Set some loggers to WARNING to reduce noise
+    logging.getLogger('asyncio').setLevel(logging.WARNING)

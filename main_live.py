@@ -26,7 +26,6 @@ async def main():
     logger.info("="*60)
     
     # TEMPORARY: Mock market IDs for testing
-    # TODO: Replace with actual Polymarket market IDs
     market_ids = {
         "BTC": "mock_btc_market_id",
         "ETH": "mock_eth_market_id",
@@ -34,41 +33,35 @@ async def main():
         "XRP": "mock_xrp_market_id"
     }
     
-    logger.warning("⚠️  Using MOCK market IDs - Replace with real Polymarket IDs!")
+    logger.warning("[WARNING] Using MOCK market IDs - Replace with real Polymarket IDs!")
     
     try:
         trader = LiveTrader(config.config, paper_trade=args.paper_trade)
         
         logger.info("Initializing trader...")
-        # Comment out initialization for now since we don't have real market IDs
-        # await trader.initialize(market_ids)
+        await trader.initialize(market_ids)
         
-        logger.info("✅ Trader initialized successfully")
-        logger.info("📊 Monitoring markets: BTC, ETH, SOL, XRP")
-        logger.info("💰 Tradeable assets: SOL, XRP")
-        logger.info(f"💵 Stake size: ${config.config['stake_size']}")
+        logger.info("[OK] Trader initialized successfully")
+        logger.info("[INFO] Monitoring markets: BTC, ETH, SOL, XRP")
+        logger.info("[INFO] Tradeable assets: SOL, XRP")
+        logger.info(f"[INFO] Stake size: ${config.config['stake_size']}")
         logger.info("")
         logger.info("Press Ctrl+C to stop...")
         logger.info("")
         
-        # For testing without real connection
-        logger.info("🧪 TEST MODE: Running without real market connection")
+        logger.info("[TEST MODE] Running with MOCK data stream")
         logger.info("To enable real trading, add actual Polymarket market IDs")
+        logger.info("")
         
-        # Keep running
-        while True:
-            await asyncio.sleep(5)
-            logger.info("Bot is running... (waiting for real market IDs)")
-        
-        # When real market IDs are added, uncomment this:
-        # await trader.run()
+        # Start the trader
+        await trader.run()
         
     except KeyboardInterrupt:
-        logger.info("\n⏹️  Shutting down gracefully...")
-        # await trader.shutdown()
-        logger.info("✅ Shutdown complete")
+        logger.info("\n[STOP] Shutting down gracefully...")
+        await trader.shutdown()
+        logger.info("[OK] Shutdown complete")
     except Exception as e:
-        logger.error(f"❌ Error: {e}", exc_info=True)
+        logger.error(f"[ERROR] {e}", exc_info=True)
 
 
 if __name__ == "__main__":
