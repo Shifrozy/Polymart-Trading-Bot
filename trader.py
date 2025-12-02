@@ -52,12 +52,12 @@ class LiveTrader:
         self.data_feed = DataFeedManager(self.config)
         await self.data_feed.initialize(market_ids)
         await self.data_feed.start_rtds()
-        logger.info("✅ Data feed initialized")
+        logger.info("[OK] Data feed initialized")
     
     async def run(self):
         """Main trading loop"""
         self.running = True
-        logger.info(f"🚀 Starting trading loop")
+        logger.info("[START] Starting trading loop")
         
         while self.running:
             try:
@@ -75,7 +75,7 @@ class LiveTrader:
         
         # Check if new window
         if window_id != self.current_window_id:
-            logger.info(f"📅 New window: {window_id}")
+            logger.info(f"[NEW WINDOW] {window_id}")
             self.current_window_id = window_id
             
             # Close any position from previous window
@@ -114,7 +114,7 @@ class LiveTrader:
         signal = self.strategy.evaluate_signal(prices)
         
         if signal.signal:
-            logger.info(f"🎯 ENTRY SIGNAL: {signal.signal} on {signal.asset} ({signal.group_config})")
+            logger.info(f"[SIGNAL] ENTRY SIGNAL: {signal.signal} on {signal.asset} ({signal.group_config})")
             logger.info(f"   Entry price: {signal.laggard_price:.3f}")
             logger.info(f"   Group prices: {signal.group_prices}")
             
@@ -132,7 +132,7 @@ class LiveTrader:
             
             # Execute order (paper trade or real)
             if self.paper_trade:
-                logger.info(f"📝 [PAPER] Entered {signal.signal} on {signal.asset} @ {signal.laggard_price:.3f}")
+                logger.info(f"[PAPER] Entered {signal.signal} on {signal.asset} @ {signal.laggard_price:.3f}")
             else:
                 await self._execute_order("BUY", signal.asset, signal.signal, self.config["stake_size"])
     
@@ -143,7 +143,7 @@ class LiveTrader:
         
         current_price = prices.get(self.current_position.asset)
         if current_price is None:
-            logger.warning(f"⚠️  Missing price for {self.current_position.asset}")
+            logger.warning(f"[WARNING] Missing price for {self.current_position.asset}")
             return
         
         # Check exit conditions
@@ -190,12 +190,12 @@ class LiveTrader:
         self.trade_logger.log_trade(trade_data)
         
         pnl_sign = "+" if pnl_usd >= 0 else ""
-        logger.info(f"🏁 CLOSED: {self.current_position.side} {self.current_position.asset}")
-        logger.info(f"   Entry: {self.current_position.entry_price:.3f} → Exit: {exit_price:.3f}")
+        logger.info(f"[CLOSED] {self.current_position.side} {self.current_position.asset}")
+        logger.info(f"   Entry: {self.current_position.entry_price:.3f} -> Exit: {exit_price:.3f}")
         logger.info(f"   P&L: {pnl_sign}${pnl_usd:.2f} | {reason}")
         
         if self.paper_trade:
-            logger.info(f"📝 [PAPER] Position closed")
+            logger.info(f"[PAPER] Position closed")
         else:
             await self._execute_order("SELL", self.current_position.asset, 
                                      self.current_position.side, self.current_position.stake_size)
@@ -205,23 +205,23 @@ class LiveTrader:
     async def _settle_position(self, reason):
         """Settle position at window expiry"""
         if self.current_position:
-            logger.info(f"⏰ Settling position at window expiry")
+            logger.info(f"[SETTLE] Settling position at window expiry")
             # Simplified: assume final price based on direction
             settlement_price = 1.0 if self.current_position.side == "UP" else 0.0
             await self._close_position(datetime.utcnow(), settlement_price, reason)
     
     async def _execute_order(self, action, asset, side, amount):
         """Execute real order on Polymarket"""
-        logger.info(f"💼 Executing {action} order: {asset} {side} ${amount}")
+        logger.info(f"[ORDER] Executing {action} order: {asset} {side} ${amount}")
         # TODO: Implement actual Polymarket order execution
         pass
     
     async def shutdown(self):
         """Graceful shutdown"""
-        logger.info("🛑 Shutting down trader...")
+        logger.info("[SHUTDOWN] Shutting down trader...")
         self.running = False
         if self.current_position:
             await self._settle_position("SHUTDOWN")
         if self.data_feed:
             await self.data_feed.shutdown()
-        logger.info("✅ Trader shutdown complete")
+        logger.info("[OK] Trader shutdown complete")

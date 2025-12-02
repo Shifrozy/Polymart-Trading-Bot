@@ -27,10 +27,10 @@ async def main():
     
     # TEMPORARY: Mock market IDs for testing
     market_ids = {
-        "BTC": "mock_btc_market_id",
-        "ETH": "mock_eth_market_id",
-        "SOL": "mock_sol_market_id",
-        "XRP": "mock_xrp_market_id"
+        "BTC": "235",
+        "ETH": "785268",
+        "SOL": "785267",
+        "XRP": "785266"
     }
     
     logger.warning("[WARNING] Using MOCK market IDs - Replace with real Polymarket IDs!")

@@ -1,6 +1,6 @@
 """
 Real-time and historical data feed manager for Polymarket
-Supports both REST API and RTDS WebSocket
+Simplified version without aiohttp dependency issues
 """
 
 import asyncio
@@ -9,6 +9,7 @@ import logging
 import time
 from datetime import datetime
 from typing import Dict, List, Optional, Callable
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -30,177 +31,113 @@ class PriceData:
 
 
 class PolymarketRESTClient:
-    """REST API client for historical data and fallback"""
+    """REST API client - Simplified version"""
     
     def __init__(self, base_url: str):
         self.base_url = base_url
-        self.session = None
     
     async def __aenter__(self):
-        try:
-            import aiohttp
-            self.session = aiohttp.ClientSession()
-        except ImportError:
-            logger.warning("aiohttp not installed - REST client disabled")
-            self.session = None
+        logger.info("REST client initialized (mock mode)")
         return self
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.session:
-            await self.session.close()
+        pass
     
     async def get_market_prices(self, market_ids: List[str]) -> Dict[str, float]:
-        """Fetch current prices for given market IDs"""
-        if not self.session:
-            logger.warning("No session available - returning mock prices")
-            return {mid: 0.5 for mid in market_ids}
-        
-        try:
-            prices = {}
-            for market_id in market_ids:
-                url = f"{self.base_url}/markets/{market_id}"
-                async with self.session.get(url) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        prices[market_id] = float(data.get('price', 0.5))
-                    else:
-                        logger.warning(f"Failed to fetch {market_id}: {response.status}")
-                        prices[market_id] = 0.5
-            return prices
-        except Exception as e:
-            logger.error(f"REST API error: {e}")
-            return {mid: 0.5 for mid in market_ids}
+        """Fetch current prices - returns mock data"""
+        logger.debug("Using mock prices (REST client)")
+        return {mid: 0.5 for mid in market_ids}
     
     async def get_historical_data(self, market_id: str, start_date: str, end_date: str):
         """Fetch historical price data"""
-        if not self.session:
-            return []
-        
-        url = f"{self.base_url}/markets/{market_id}/history"
-        params = {"start": start_date, "end": end_date}
-        
-        try:
-            async with self.session.get(url, params=params) as response:
-                if response.status == 200:
-                    return await response.json()
-                return []
-        except Exception as e:
-            logger.error(f"Historical data error: {e}")
-            return []
+        return []
 
 
 class PolymarketRTDSClient:
-    """Real-time data stream WebSocket client with auto-reconnect"""
+    """Real-time data stream - Mock implementation"""
     
     def __init__(self, ws_url: str, market_ids: Dict[str, str], reconnect_delay: int = 5):
         self.ws_url = ws_url
-        self.market_ids = market_ids  # {"BTC": "market_id_123", ...}
+        self.market_ids = market_ids
         self.reconnect_delay = reconnect_delay
-        self.ws = None
         self.running = False
         self.callbacks: List[Callable] = []
-        self.websockets_available = False
-        
-        try:
-            import websockets
-            self.websockets_available = True
-        except ImportError:
-            logger.warning("websockets not installed - RTDS disabled")
     
     def subscribe(self, callback: Callable):
         """Register callback for price updates"""
         self.callbacks.append(callback)
     
     async def connect(self):
-        """Connect to WebSocket with auto-reconnect"""
-        if not self.websockets_available:
-            logger.warning("WebSocket not available - running in mock mode")
-            await self._mock_price_stream()
-            return
-        
-        import websockets
-        self.running = True
-        
-        while self.running:
-            try:
-                async with websockets.connect(self.ws_url) as ws:
-                    self.ws = ws
-                    logger.info("RTDS WebSocket connected")
-                    
-                    # Subscribe to markets
-                    subscribe_msg = {
-                        "type": "subscribe",
-                        "markets": list(self.market_ids.values())
-                    }
-                    await ws.send(json.dumps(subscribe_msg))
-                    
-                    # Listen for updates
-                    async for message in ws:
-                        await self._handle_message(message)
-                        
-            except websockets.exceptions.ConnectionClosed:
-                logger.warning(f"WebSocket disconnected, reconnecting in {self.reconnect_delay}s")
-                await asyncio.sleep(self.reconnect_delay)
-            except Exception as e:
-                logger.error(f"WebSocket error: {e}")
-                await asyncio.sleep(self.reconnect_delay)
+        """Generate mock price stream"""
+        logger.info("[MOCK] Starting mock price stream for testing")
+        await self._mock_price_stream()
     
     async def _mock_price_stream(self):
-        """Generate mock price updates for testing"""
-        import random
-        logger.info("🧪 Starting mock price stream")
+        """Generate realistic mock price updates"""
+        # Initialize prices with some variety
+        prices = {
+            "BTC": random.uniform(0.45, 0.55),
+            "ETH": random.uniform(0.45, 0.55),
+            "SOL": random.uniform(0.45, 0.55),
+            "XRP": random.uniform(0.45, 0.55)
+        }
         
-        prices = {asset: 0.5 for asset in self.market_ids.keys()}
+        self.running = True
+        iteration = 0
         
         while self.running:
-            for asset in self.market_ids.keys():
-                # Random walk
-                change = random.uniform(-0.05, 0.05)
-                prices[asset] = max(0.0, min(1.0, prices[asset] + change))
+            iteration += 1
+            
+            # Every 20 iterations, create potential signal conditions
+            if iteration % 20 == 0:
+                scenario = random.choice(['up_signal', 'down_signal', 'neutral'])
                 
+                if scenario == 'up_signal':
+                    # Group high, laggard low
+                    prices["BTC"] = random.uniform(0.75, 0.95)
+                    prices["ETH"] = random.uniform(0.75, 0.95)
+                    prices["SOL"] = random.uniform(0.75, 0.95)
+                    prices["XRP"] = random.uniform(0.10, 0.45)
+                    logger.info("[MOCK] Creating UP signal scenario")
+                    
+                elif scenario == 'down_signal':
+                    # Group low, laggard high
+                    prices["BTC"] = random.uniform(0.05, 0.25)
+                    prices["ETH"] = random.uniform(0.05, 0.25)
+                    prices["SOL"] = random.uniform(0.05, 0.25)
+                    prices["XRP"] = random.uniform(0.55, 0.90)
+                    logger.info("[MOCK] Creating DOWN signal scenario")
+                    
+                else:
+                    # Random neutral prices
+                    for asset in prices:
+                        prices[asset] = random.uniform(0.30, 0.70)
+            else:
+                # Small random changes
+                for asset in prices:
+                    change = random.uniform(-0.02, 0.02)
+                    prices[asset] = max(0.01, min(0.99, prices[asset] + change))
+            
+            # Send price updates
+            for asset in self.market_ids.keys():
                 price_data = PriceData(datetime.utcnow(), asset, prices[asset])
                 
                 for callback in self.callbacks:
-                    await callback(price_data)
+                    try:
+                        await callback(price_data)
+                    except Exception as e:
+                        logger.error(f"Callback error: {e}")
             
             await asyncio.sleep(2)  # Update every 2 seconds
-    
-    async def _handle_message(self, message: str):
-        """Parse and distribute price updates"""
-        try:
-            data = json.loads(message)
-            
-            if data.get("type") == "price_update":
-                market_id = data.get("market_id")
-                price = float(data.get("price", 0.5))
-                timestamp = datetime.fromisoformat(data.get("timestamp", datetime.utcnow().isoformat()))
-                
-                # Find asset name from market_id
-                asset = None
-                for asset_name, mid in self.market_ids.items():
-                    if mid == market_id:
-                        asset = asset_name
-                        break
-                
-                if asset:
-                    price_data = PriceData(timestamp, asset, price)
-                    
-                    # Notify all callbacks
-                    for callback in self.callbacks:
-                        await callback(price_data)
-                        
-        except Exception as e:
-            logger.error(f"Message parsing error: {e}")
     
     async def disconnect(self):
         """Gracefully disconnect"""
         self.running = False
-        if self.ws:
-            await self.ws.close()
+        logger.info("[MOCK] Price stream stopped")
 
 
 class DataFeedManager:
-    """Manages both REST and RTDS feeds with automatic fallback"""
+    """Manages both REST and RTDS feeds"""
     
     def __init__(self, config):
         self.config = config
@@ -225,13 +162,12 @@ class DataFeedManager:
         # Subscribe to price updates
         self.rtds_client.subscribe(self._on_price_update)
         
-        logger.info("✅ Data feed manager initialized")
+        logger.info("[OK] Data feed manager initialized")
     
     async def _on_price_update(self, price_data: PriceData):
         """Handle incoming price updates from RTDS"""
         self.latest_prices[price_data.asset] = price_data
-        self.use_rtds = True  # RTDS is working
-        logger.debug(f"Price update: {price_data.asset} = {price_data.price:.4f}")
+        self.use_rtds = True
     
     async def start_rtds(self):
         """Start RTDS connection in background"""
@@ -239,20 +175,21 @@ class DataFeedManager:
         asyncio.create_task(self.rtds_client.connect())
     
     async def get_latest_prices(self, assets: List[str]) -> Dict[str, PriceData]:
-        """Get latest prices, fallback to REST if RTDS fails"""
+        """Get latest prices"""
+        # Wait a moment if prices not ready
+        if not all(asset in self.latest_prices for asset in assets):
+            await asyncio.sleep(0.5)
+        
         if self.use_rtds and all(asset in self.latest_prices for asset in assets):
             return {asset: self.latest_prices[asset] for asset in assets}
         
-        # Fallback to REST
-        logger.debug("Using REST API for prices")
-        market_ids = [self.rtds_client.market_ids.get(asset) for asset in assets if asset in self.rtds_client.market_ids]
-        prices = await self.rest_client.get_market_prices(market_ids)
-        
+        # Fallback
         result = {}
         for asset in assets:
-            market_id = self.rtds_client.market_ids.get(asset)
-            if market_id and market_id in prices:
-                result[asset] = PriceData(datetime.utcnow(), asset, prices[market_id])
+            if asset in self.latest_prices:
+                result[asset] = self.latest_prices[asset]
+            else:
+                result[asset] = PriceData(datetime.utcnow(), asset, 0.5)
         
         return result
     
@@ -261,4 +198,4 @@ class DataFeedManager:
         logger.info("Shutting down data feed manager...")
         await self.rtds_client.disconnect()
         await self.rest_client.__aexit__(None, None, None)
-        logger.info("✅ Data feed shutdown complete")
+        logger.info("[OK] Data feed shutdown complete")
