@@ -99,9 +99,8 @@ class EnhancedBacktester:
             logger.error("[ERROR] No data in specified date range")
             return
         
-        # Group by timestamp to get all asset prices at once
-        timestamps = data['timestamp'].unique()
-        timestamps.sort()
+        # Get unique timestamps and sort them - FIXED LINE
+        timestamps = sorted(data['timestamp'].unique())  # Convert to list and sort
         
         logger.info(f"[INFO] Processing {len(timestamps)} timestamps...")
         
@@ -112,7 +111,7 @@ class EnhancedBacktester:
             processed += 1
             
             if processed % 1000 == 0:
-                logger.info(f"[PROGRESS] Processed {processed}/{len(timestamps)} timestamps")
+                logger.info(f"[PROGRESS] Processed {processed}/{len(timestamps)} timestamps ({processed/len(timestamps)*100:.1f}%)")
             
             # Get prices at this timestamp
             snapshot = data[data['timestamp'] == ts]
@@ -275,6 +274,12 @@ class EnhancedBacktester:
         """Generate comprehensive backtest report"""
         if not self.trades:
             logger.warning("[WARNING] No trades executed in backtest")
+            print("\n[NO TRADES] No trades were executed during the backtest period.")
+            print("This could mean:")
+            print("  - Strategy conditions were never met")
+            print("  - Time window restrictions prevented entries")
+            print("  - Zone thresholds are too strict")
+            print("\nTry adjusting config.json parameters or check the data.")
             return
         
         df = pd.DataFrame([t.to_dict() for t in self.trades])
@@ -338,7 +343,7 @@ class EnhancedBacktester:
         
         print(f"\nPER-ASSET PERFORMANCE")
         for asset in asset_stats.index:
-            count = asset_stats.loc[asset, 'count']
+            count = int(asset_stats.loc[asset, 'count'])
             total = asset_stats.loc[asset, 'sum']
             avg = asset_stats.loc[asset, 'mean']
             print(f"  {asset}:  {count} trades | Total: ${total:.2f} | Avg: ${avg:.2f}")
@@ -362,3 +367,4 @@ class EnhancedBacktester:
                     writer.writerow(trade.to_dict())
         
         logger.info(f"[EXPORT] Results saved to {output_file}")
+        print(f"\n[EXPORT] Detailed results saved to: {output_file}")

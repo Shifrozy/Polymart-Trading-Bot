@@ -6,7 +6,7 @@ Production-ready with better error handling and position management
 import asyncio
 import logging
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict  # ADD Dict HERE
 from dataclasses import dataclass, asdict
 
 from data_feed import EnhancedDataFeedManager
