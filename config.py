@@ -36,6 +36,9 @@ DEFAULT_CONFIG = {
     "exit_up_threshold": 0.90,
     "exit_down_threshold": 0.10,
     
+    # Stop Loss (Risk Management)
+    "stop_loss_pct": 0.05,  # 5% stop loss from entry
+    
     # Time Window Settings
     "window_duration_minutes": 15,
     "entry_window_max_remaining_seconds": 300,  # 5:00 minutes
@@ -65,7 +68,17 @@ DEFAULT_CONFIG = {
     # API Rate Limiting
     "api_request_delay": 0.5,
     "reconnect_delay_seconds": 5,
-    "max_reconnect_attempts": 10
+    "max_reconnect_attempts": 10,
+    
+    # Wallet Configuration (for live trading)
+    "wallet_private_key": "",  # Set via environment variable or config.json
+    "wallet_address": "",      # Will be derived from private key
+    "chain_id": 137,           # Polygon Mainnet for Polymarket
+    
+    # CLOB Configuration
+    "clob_timeout": 30,
+    "clob_order_type": "limit",  # limit or market
+    "clob_slippage_percent": 0.5  # Max slippage tolerance
 }
 
 

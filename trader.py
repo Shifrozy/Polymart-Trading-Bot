@@ -6,7 +6,7 @@ Production-ready with better error handling and position management
 import asyncio
 import logging
 from datetime import datetime
-from typing import Optional, Dict  # ADD Dict HERE
+from typing import Optional, Dict
 from dataclasses import dataclass, asdict
 
 from data_feed import EnhancedDataFeedManager
@@ -30,6 +30,7 @@ class Position:
     group_prices: dict
     stake_size: float
     market_id: str = ""
+    stop_loss_price: float = 0.0  # Stop loss level
     
     def to_dict(self):
         return asdict(self)
@@ -56,7 +57,7 @@ class EnhancedLiveTrader:
         self.total_trades = 0
         self.total_pnl = 0.0
         
-        logger.info(f"[INIT] EnhancedLiveTrader initialized (Paper: {paper_trade})")
+        logger.info(f"[INIT] EnhancedLiveTrader initialized (Paper Trade Mode: {paper_trade})")
     
     async def initialize(self):
         """Initialize trader and data feeds"""
@@ -89,6 +90,34 @@ class EnhancedLiveTrader:
         logger.info(f"Exit UP: >= {self.config['exit_up_threshold']}")
         logger.info(f"Exit DOWN: <= {self.config['exit_down_threshold']}")
         logger.info("="*60)
+    def _log_config(self):
+        """Log current configuration"""
+        logger.info("="*60)
+        logger.info("TRADING CONFIGURATION")
+        logger.info("="*60)
+        logger.info(f"Assets: {', '.join(self.config['all_assets'])}")
+        logger.info(f"Reference: {', '.join(self.config['reference_assets'])}")
+        logger.info(f"Tradeable: {', '.join(self.config['tradeable_assets'])}")
+        logger.info(f"Window: {self.config['window_duration_minutes']} minutes")
+        logger.info(f"Entry window: {self.config['entry_window_min_remaining_seconds']}s - {self.config['entry_window_max_remaining_seconds']}s")
+        logger.info(f"Stake size: ${self.config['stake_size_usd']}")
+        logger.info(f"Stop Loss: {self.config['stop_loss_pct']*100:.1f}%")
+        logger.info(f"Exit UP: >= {self.config['exit_up_threshold']}")
+        logger.info(f"Exit DOWN: <= {self.config['exit_down_threshold']}")
+        logger.info("="*60)
+    
+    def _calculate_stop_loss(self, side: str, entry_price: float) -> float:
+        """Calculate stop loss price"""
+        stop_loss_pct = self.config.get("stop_loss_pct", 0.05)
+        
+        if side == "UP":
+            # For UP trades, stop loss is below entry
+            stop_loss = entry_price * (1 - stop_loss_pct)
+        else:  # DOWN
+            # For DOWN trades, stop loss is above entry
+            stop_loss = entry_price * (1 + stop_loss_pct)
+        
+        return stop_loss
     
     async def run(self):
         """Main trading loop"""
@@ -197,20 +226,22 @@ class EnhancedLiveTrader:
             group_assets=signal.group_assets,
             group_prices=signal.group_prices,
             stake_size=self.config["stake_size_usd"],
-            market_id=market_info.market_id if market_info else ""
+            market_id=market_info.market_id if market_info else "",
+            stop_loss_price=self._calculate_stop_loss(signal.signal, signal.laggard_price)
         )
         
         # Log entry
-        logger.info(f"[ENTRY] {signal.side} position on {signal.asset}")
+        logger.info(f"[ENTRY] {signal.signal} position on {signal.asset}")
         logger.info(f"  Window: {self.current_window_id}")
         logger.info(f"  Group: {signal.group_config} - {signal.group_assets}")
         logger.info(f"  Group prices: {signal.group_prices}")
         logger.info(f"  Entry price: {signal.laggard_price:.4f}")
+        logger.info(f"  Stop Loss: {self.current_position.stop_loss_price:.4f}")
         logger.info(f"  Stake: ${self.config['stake_size_usd']}")
         logger.info(f"  Market ID: {self.current_position.market_id}")
         
         if self.paper_trade:
-            logger.info(f"  [PAPER TRADE] Simulated entry")
+            logger.info(f"  [PAPER TRADE] ✓ Simulated entry CONFIRMED")
         else:
             logger.info(f"  [LIVE TRADE] Executing order...")
             await self._execute_order("ENTRY", signal.asset, signal.signal)
@@ -229,6 +260,11 @@ class EnhancedLiveTrader:
             logger.warning(f"[WARNING] No price for {self.current_position.asset}")
             return
         
+        # Check STOP LOSS first (most important)
+        if self._check_stop_loss(current_price):
+            await self._exit_position(current_time, current_price, "STOP_LOSS")
+            return
+        
         # Check strategy exit conditions
         should_exit, reason = self.strategy.check_exit(
             self.current_position.side,
@@ -237,6 +273,20 @@ class EnhancedLiveTrader:
         
         if should_exit:
             await self._exit_position(current_time, current_price, reason)
+    
+    def _check_stop_loss(self, current_price: float) -> bool:
+        """Check if stop loss is triggered"""
+        if not self.current_position:
+            return False
+        
+        stop_loss_price = self.current_position.stop_loss_price
+        
+        if self.current_position.side == "UP":
+            # For UP, stop loss triggers when price goes below stop loss
+            return current_price <= stop_loss_price
+        else:  # DOWN
+            # For DOWN, stop loss triggers when price goes above stop loss
+            return current_price >= stop_loss_price
     
     async def _exit_position(self, exit_time: datetime, exit_price: float, reason: str):
         """Exit current position"""
@@ -283,20 +333,21 @@ class EnhancedLiveTrader:
         # Display results
         logger.info("")
         logger.info("="*60)
-        logger.info(f"[EXIT] Position closed")
+        logger.info(f"[EXIT] Position closed - {reason}")
         logger.info("="*60)
-        logger.info(f"Asset: {self.current_position.asset} {self.current_position.side}")
-        logger.info(f"Entry: {self.current_position.entry_price:.4f} @ {self.current_position.entry_time.strftime('%H:%M:%S')}")
-        logger.info(f"Exit:  {exit_price:.4f} @ {exit_time.strftime('%H:%M:%S')}")
-        logger.info(f"P&L:   {'+' if pnl_usd >= 0 else ''}{pnl_usd:.4f} USD ({'+' if pnl_pct >= 0 else ''}{pnl_pct*100:.2f}%)")
-        logger.info(f"Reason: {reason}")
-        logger.info(f"Outcome: {'WIN' if pnl_usd > 0 else 'LOSS'}")
-        logger.info(f"Total Trades: {self.total_trades} | Cumulative P&L: ${self.total_pnl:.2f}")
+        logger.info(f"Asset: {self.current_position.asset} | Side: {self.current_position.side}")
+        logger.info(f"Entry Price:   {self.current_position.entry_price:.4f} @ {self.current_position.entry_time.strftime('%H:%M:%S')}")
+        logger.info(f"Stop Loss:     {self.current_position.stop_loss_price:.4f}")
+        logger.info(f"Exit Price:    {exit_price:.4f} @ {exit_time.strftime('%H:%M:%S')}")
+        logger.info(f"P&L:           {'+' if pnl_usd >= 0 else ''}{pnl_usd:.4f} USD ({'+' if pnl_pct >= 0 else ''}{pnl_pct*100:.2f}%)")
+        logger.info(f"Result:        {'✅ WIN' if pnl_usd > 0 else '❌ LOSS'}")
+        logger.info(f"Exit Reason:   {reason}")
+        logger.info(f"Stats:         Trade #{self.total_trades} | Cumulative P&L: ${self.total_pnl:.2f}")
         logger.info("="*60)
         logger.info("")
         
         if self.paper_trade:
-            logger.info("[PAPER TRADE] Simulated exit")
+            logger.info("[PAPER TRADE] ✓ Exit order simulated")
         else:
             logger.info("[LIVE TRADE] Executing exit order...")
             await self._execute_order("EXIT", self.current_position.asset, self.current_position.side)
@@ -324,11 +375,20 @@ class EnhancedLiveTrader:
         await self._exit_position(datetime.utcnow(), final_price, reason)
     
     async def _execute_order(self, action: str, asset: str, side: str):
-        """Execute order on Polymarket (placeholder for real implementation)"""
-        logger.info(f"[ORDER] {action}: {side} {asset}")
-        # TODO: Implement real Polymarket order execution
-        # This requires wallet integration and CLOB API calls
-        pass
+        """
+        Simulate order execution (Paper Trading Mode)
+        
+        In real implementation, this would place actual orders via CLOB API
+        For now, we just simulate the execution
+        """
+        if self.paper_trade:
+            logger.info(f"[PAPER TRADE] {action}: {side} {asset} @ simulated market price")
+            logger.info(f"[PAPER TRADE] Stake: ${self.config['stake_size_usd']}")
+            logger.info(f"[PAPER TRADE] Status: ✓ Simulated order filled")
+        else:
+            logger.warning(f"[WARNING] LIVE TRADING not yet implemented!")
+            logger.warning(f"[WARNING] {action}: {side} {asset} would execute here with real money")
+            logger.warning(f"[NOTE] To use live trading, implement CLOB API integration")
     
     async def shutdown(self):
         """Graceful shutdown"""

@@ -39,25 +39,107 @@ A professional algorithmic trading bot for Polymarket 15-minute UP/DOWN predicti
 ### Installation
 ```bash
 # Clone or download the project
-cd polymarket_bot
+cd polymart_bot
 
 # Install dependencies
 pip install pandas numpy requests websockets aiohttp
 ```
 
-### Generate Sample Data
+### Running the Bot
+
+#### **UNIFIED ENTRY POINT** (Recommended)
 ```bash
-python main_backtest.py --generate-data
+# Run this - will show menu to choose Backtest or Live Trading
+python run.py
 ```
 
-### Run Backtest
-```bash
-python main_backtest.py --start 2024-09-01 --end 2024-12-31
+Yeh menu show karega:
+```
+POLYMARKET 15-MINUTE TRADING BOT
+=======================================
+Select Mode:
+  1. 📊 BACKTEST   - Test strategy on historical data
+  2. 🔴 LIVE TRADE - Real-time paper trading (no money)
+  3. ⚙️  CONFIG    - View configuration
+  4. ❌ EXIT       - Exit the program
 ```
 
-### Run Paper Trading
+#### 1. **BACKTESTING** (Historical Data)
 ```bash
-python main_live.py --paper-trade
+Option 1 se select karo
+Phir date range choose karo
+Automatic results dikhega
+```
+
+**Features:**
+- ✅ Date range selection (7, 30, 90 days ya custom)
+- ✅ Full trade history
+- ✅ P&L analysis
+- ✅ Win rate tracking
+
+#### 2. **PAPER TRADING MODE** (Real Market Data - NO MONEY)
+```bash
+Option 2 se select karo
+Live prices stream hoge
+Strategy actual signals dega
+```
+
+**Features:**
+- ✅ Real-time prices from Polymarket
+- ✅ Full position tracking
+- ✅ Stop Loss (5% by default)
+- ✅ Clear entry/exit signals
+- ✅ P&L tracking
+- ✅ NO real money at risk
+
+---
+
+## Trade Signal Examples
+
+### Entry Signal
+```
+************************************************************
+[SIGNAL DETECTED] UP on XRP (G1): Group HIGH, Laggard LOW
+************************************************************
+
+[ENTRY] UP position on XRP
+  Window: 20251203_1400
+  Group: G1 - ['BTC', 'ETH', 'SOL']
+  Entry price: 0.4274
+  Stop Loss: 0.4061 (5%)
+  Stake: $1.0
+  [PAPER TRADE] ✓ Simulated entry CONFIRMED
+```
+
+### Exit Signal
+```
+============================================================
+[EXIT] Position closed - STOP_LOSS
+============================================================
+Asset: XRP | Side: UP
+Entry Price:   0.4274 @ 14:11:49
+Stop Loss:     0.4061
+Exit Price:    0.3626 @ 14:12:12
+P&L:           -0.0648 USD (-6.48%)
+Result:        ❌ LOSS
+Exit Reason:   STOP_LOSS
+Stats:         Trade #1 | Cumulative P&L: $-0.06
+============================================================
+```
+
+---
+
+## Configuration
+
+Edit `config.py` to customize:
+
+```python
+"stake_size_usd": 1.0,              # Per trade stake
+"stop_loss_pct": 0.05,              # 5% stop loss
+"exit_up_threshold": 0.90,          # Exit UP when >= 90%
+"exit_down_threshold": 0.10,        # Exit DOWN when <= 10%
+"entry_window_min_remaining_seconds": 90,   # Enter only in last 1:30
+"entry_window_max_remaining_seconds": 300,  # Enter in last 5:00
 ```
 
 ---
@@ -65,13 +147,25 @@ python main_live.py --paper-trade
 ## Project Structure
 ```
 polymarket_bot/
+├── run.py                 # 🆕 MAIN ENTRY POINT
 ├── config.py              # Configuration system
 ├── config.json            # User configuration file
 ├── market_loader.py       # Polymarket API market loader
 ├── data_feed.py           # Real-time data feed (RTDS + REST)
 ├── window_manager.py      # 15-minute window management
 ├── strategy.py            # Group + Laggard strategy
-├── trader.py              # Live trading engine
+├── trader.py              # Live trading engine (with stop loss)
+├── main_backtest.py       # Historical backtesting
+├── main_live.py           # Legacy entry point
+├── logger.py              # Logging system
+├── wallet.py              # (Placeholder for future real trading)
+├── data/
+│   └── historical/        # Backtest data
+├── logs/
+│   ├── bot.log           # System logs
+│   └── trades.csv        # Trade history
+└── README.md             # This file
+```
 ├── backtester.py          # Backtesting engine
 ├── logger.py              # Logging utilities
 ├── utils.py               # Helper functions
