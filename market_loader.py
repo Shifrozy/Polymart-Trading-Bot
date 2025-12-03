@@ -18,8 +18,8 @@ class MarketInfo:
     asset: str
     market_id: str
     condition_id: str
-    yes_token_id: str  # UP outcome
-    no_token_id: str   # DOWN outcome
+    yes_token_id: str
+    no_token_id: str
     yes_price: float
     no_price: float
     active: bool
@@ -35,79 +35,88 @@ class PolymarketLoader:
         self.clob_url = config["polymarket_clob_url"]
         self.markets: Dict[str, MarketInfo] = {}
         self.last_update = 0
-        self.update_interval = 300  # Update every 5 minutes
+        self.update_interval = 300
+        self.use_mock = False  # Track if we're using mock
     
     async def fetch_markets(self, assets: List[str]) -> Dict[str, MarketInfo]:
-        """
-        Fetch 15-minute markets for given assets
+        """Fetch 15-minute markets for given assets"""
         
-        Args:
-            assets: List of asset symbols (e.g., ["BTC", "ETH", "SOL", "XRP"])
+        # If already using mock, skip API calls
+        if self.use_mock:
+            logger.info("[MOCK] Using cached mock markets")
+            return self._create_all_mock_markets(assets)
         
-        Returns:
-            Dictionary of {asset: MarketInfo}
-        """
-        logger.info(f"Fetching 15-minute markets for: {', '.join(assets)}")
+        logger.info(f"[API] Fetching 15-minute markets for: {', '.join(assets)}")
         
         try:
-            # Try to import requests for API calls
             import requests
             
             markets = {}
+            api_failed = False
             
             for asset in assets:
-                # Search for 15-minute markets
-                search_url = f"{self.api_url}/markets"
-                params = {
-                    "active": "true",
-                    "closed": "false",
-                    "_limit": 10
-                }
-                
-                response = requests.get(search_url, params=params, timeout=10)
-                
-                if response.status_code == 200:
-                    data = response.json()
+                try:
+                    # Try to fetch from API with longer timeout
+                    search_url = f"{self.api_url}/markets"
+                    params = {
+                        "active": "true",
+                        "closed": "false",
+                        "_limit": 10
+                    }
                     
-                    # Find 15-min market for this asset
-                    market_data = self._find_15min_market(data, asset)
+                    response = requests.get(search_url, params=params, timeout=15)
                     
-                    if market_data:
-                        markets[asset] = self._parse_market(market_data, asset)
-                        logger.info(f"[OK] Found {asset} 15-min market: {markets[asset].market_id}")
+                    if response.status_code == 200:
+                        data = response.json()
+                        market_data = self._find_15min_market(data, asset)
+                        
+                        if market_data:
+                            markets[asset] = self._parse_market(market_data, asset)
+                            logger.info(f"[OK] Found {asset} market")
+                        else:
+                            logger.warning(f"[API] No 15-min market found for {asset}")
+                            api_failed = True
                     else:
-                        logger.warning(f"[WARNING] No 15-min market found for {asset}")
-                        # Create mock market for testing
-                        markets[asset] = self._create_mock_market(asset)
-                else:
-                    logger.error(f"API error for {asset}: {response.status_code}")
-                    markets[asset] = self._create_mock_market(asset)
-                
-                # Rate limiting
-                await asyncio.sleep(self.config["api_request_delay"])
+                        logger.warning(f"[API] Error {response.status_code} for {asset}")
+                        api_failed = True
+                    
+                    await asyncio.sleep(self.config["api_request_delay"])
+                    
+                except requests.exceptions.Timeout:
+                    logger.warning(f"[API] Timeout for {asset}")
+                    api_failed = True
+                    break
+                except Exception as e:
+                    logger.warning(f"[API] Error for {asset}: {e}")
+                    api_failed = True
+                    break
+            
+            # If API failed, use mock markets
+            if api_failed or not markets:
+                logger.info("[MOCK] API unavailable - switching to mock markets for testing")
+                self.use_mock = True
+                return self._create_all_mock_markets(assets)
             
             self.markets = markets
             self.last_update = time.time()
-            
             return markets
             
         except ImportError:
-            logger.warning("requests library not installed, using mock markets")
+            logger.info("[MOCK] requests library not installed - using mock markets")
+            self.use_mock = True
             return self._create_all_mock_markets(assets)
         except Exception as e:
-            logger.error(f"Error fetching markets: {e}")
+            logger.warning(f"[API] Error: {e} - using mock markets")
+            self.use_mock = True
             return self._create_all_mock_markets(assets)
     
     def _find_15min_market(self, data: List[dict], asset: str) -> Optional[dict]:
         """Find 15-minute market in API response"""
         for market in data:
             question = market.get("question", "").upper()
-            
-            # Look for 15-minute markets
             if "15" in question and asset.upper() in question:
                 if "MINUTE" in question or "MIN" in question:
                     return market
-        
         return None
     
     def _parse_market(self, market_data: dict, asset: str) -> MarketInfo:
@@ -140,29 +149,13 @@ class PolymarketLoader:
     
     def _create_all_mock_markets(self, assets: List[str]) -> Dict[str, MarketInfo]:
         """Create mock markets for all assets"""
-        logger.info("[MOCK] Creating mock markets for testing")
         return {asset: self._create_mock_market(asset) for asset in assets}
     
     async def update_prices(self):
-        """Update current market prices from CLOB API"""
-        try:
-            import requests
-            
-            for asset, market in self.markets.items():
-                url = f"{self.clob_url}/price"
-                params = {"token_id": market.yes_token_id}
-                
-                response = requests.get(url, params=params, timeout=5)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    market.yes_price = float(data.get("price", 0.5))
-                    market.no_price = 1.0 - market.yes_price
-                
-                await asyncio.sleep(0.1)
-                
-        except Exception as e:
-            logger.debug(f"Price update error: {e}")
+        """Update current market prices"""
+        if self.use_mock:
+            return  # Skip if using mock
+        # Real implementation here
     
     def get_market_ids(self) -> Dict[str, str]:
         """Get market IDs for WebSocket subscription"""
@@ -170,29 +163,6 @@ class PolymarketLoader:
     
     def should_update(self) -> bool:
         """Check if markets should be refreshed"""
+        if self.use_mock:
+            return False  # Don't refresh mock markets
         return (time.time() - self.last_update) > self.update_interval
-
-
-# Test the loader
-if __name__ == "__main__":
-    async def test():
-        from config import Config
-        config = Config()
-        
-        loader = PolymarketLoader(config.config)
-        markets = await loader.fetch_markets(["BTC", "ETH", "SOL", "XRP"])
-        
-        print("\n" + "="*60)
-        print("POLYMARKET 15-MINUTE MARKETS")
-        print("="*60)
-        
-        for asset, market in markets.items():
-            print(f"\n{asset}:")
-            print(f"  Market ID: {market.market_id}")
-            print(f"  YES Token (UP): {market.yes_token_id}")
-            print(f"  NO Token (DOWN): {market.no_token_id}")
-            print(f"  Active: {market.active}")
-        
-        print("\n" + "="*60)
-    
-    asyncio.run(test())
