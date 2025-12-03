@@ -1,0 +1,47 @@
+{
+  "polymarket_api_url": "https://gamma-api.polymarket.com",
+  "polymarket_clob_url": "https://clob.polymarket.com",
+  "polymarket_rtds_url": "wss://ws-subscriptions-clob.polymarket.com/ws/market",
+  
+  "market_interval": "15m",
+  "reference_assets": ["BTC", "ETH"],
+  "tradeable_assets": ["SOL", "XRP"],
+  "all_assets": ["BTC", "ETH", "SOL", "XRP"],
+  
+  "zone_high_min": 0.75,
+  "zone_high_max": 1.0,
+  "zone_low_min": 0.0,
+  "zone_low_max": 0.25,
+  "laggard_up_entry_min": 0.0,
+  "laggard_up_entry_max": 0.5,
+  "laggard_down_entry_min": 0.5,
+  "laggard_down_entry_max": 1.0,
+  
+  "exit_up_threshold": 0.9,
+  "exit_down_threshold": 0.1,
+  
+  "window_duration_minutes": 15,
+  "entry_window_max_remaining_seconds": 300,
+  "entry_window_min_remaining_seconds": 90,
+  "max_trades_per_window": 1,
+  
+  "stake_size_usd": 1.0,
+  "entry_check_interval_seconds": 5,
+  
+  "backtest_start_date": "2024-09-01",
+  "backtest_end_date": "2024-12-31",
+  "backtest_data_dir": "./data/historical",
+  
+  "log_dir": "./logs",
+  "trade_log_file": "trades.csv",
+  "system_log_file": "bot.log",
+  "log_level": "INFO",
+  
+  "enable_paper_trading": true,
+  "enable_backtesting": true,
+  "enable_live_trading": false,
+  
+  "api_request_delay": 0.5,
+  "reconnect_delay_seconds": 5,
+  "max_reconnect_attempts": 10
+}
