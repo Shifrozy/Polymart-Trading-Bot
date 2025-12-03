@@ -83,11 +83,17 @@ Examples:
         print("WARNING: LIVE TRADING MODE")
         print("!"*60)
         print("This will execute REAL trades with REAL money!")
-        print("Make sure you have:")
-        print("  1. Configured your wallet")
-        print("  2. Funded your account")
-        print("  3. Tested thoroughly in paper mode")
-        print("  4. Understand the risks")
+        print("")
+        print("REQUIREMENTS FOR LIVE TRADING:")
+        print("  1. ✓ Configure your wallet (private key setup)")
+        print("  2. ✓ Fund your account on Polymarket")
+        print("  3. ✓ Implement order execution in _execute_order()")
+        print("  4. ✓ Test thoroughly in PAPER MODE first")
+        print("  5. ✓ Understand the RISKS")
+        print("")
+        print("STATUS: Order execution NOT yet implemented!")
+        print("  → Currently: _execute_order() is a stub function")
+        print("  → Need: CLOB API implementation + wallet integration")
         print("")
         
         response = input("Type 'I UNDERSTAND THE RISKS' to continue: ")
@@ -96,6 +102,8 @@ Examples:
             return
         
         print("\nProceeding with live trading...")
+        print("[WARNING] Orders will NOT actually execute until _execute_order() is implemented")
+        print("")
     
     print("")
     
