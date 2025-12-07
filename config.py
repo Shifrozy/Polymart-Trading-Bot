@@ -10,11 +10,33 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+# ============================================================================
+# MARKET IDs - USER CONFIGURABLE (LEAVE EMPTY, FILL MANUALLY)
+# ============================================================================
+market_ids = {
+    "BTC": {
+        "market": "867701",
+        "slug": "btc-updown-15m-1765131300"
+    },
+    "ETH": {
+        "market": "868690",
+        "slug": "eth-updown-15m-1765133100"
+    },
+    "SOL": {
+        "market": "867706",
+        "slug": "sol-updown-15m-1765131300"
+    },
+    "XRP": {
+        "market": "867712",
+        "slug": "xrp-updown-15m-1765131300"
+    }
+}
+
 DEFAULT_CONFIG = {
     # API Configuration
     "polymarket_api_url": "https://gamma-api.polymarket.com",
     "polymarket_clob_url": "https://clob.polymarket.com",
-    "polymarket_rtds_url": "wss://ws-subscriptions-clob.polymarket.com/ws/market",
+    "polymarket_rtds_url": "wss://clob.polymarket.com/ws",
     
     # Market Configuration
     "market_interval": "15m",  # 15-minute markets
@@ -31,14 +53,14 @@ DEFAULT_CONFIG = {
     # Example: "market_id_goes_here_with_uuid_format"
     "manual_markets": {
         # UP/DOWN Markets for each asset
-        "BTC_UP": "867701",      # Paste BTC UP market ID here
-        "BTC_DOWN": "867701",    # Paste BTC DOWN market ID here
-        "ETH_UP": "867707",      # Paste ETH UP market ID here
-        "ETH_DOWN": "867707",    # Paste ETH DOWN market ID here
-        "SOL_UP": "867706",      # Paste SOL UP market ID here
-        "SOL_DOWN": "867706",    # Paste SOL DOWN market ID here
-        "XRP_UP": "867712",      # Paste XRP UP market ID here
-        "XRP_DOWN": "867712",    # Paste XRP DOWN market ID here
+        "BTC_UP": "867701",      # BTC market ID
+        "BTC_DOWN": "867701",    # BTC market ID (same)
+        "ETH_UP": "868690",      # ETH market ID
+        "ETH_DOWN": "868690",    # ETH market ID (same)
+        "SOL_UP": "867706",      # SOL market ID
+        "SOL_DOWN": "867706",    # SOL market ID (same)
+        "XRP_UP": "867712",      # XRP market ID
+        "XRP_DOWN": "867712",    # XRP market ID (same)
     },
     
     # Strategy Parameters - Zone Thresholds
@@ -51,12 +73,15 @@ DEFAULT_CONFIG = {
     "laggard_down_entry_min": 0.50,
     "laggard_down_entry_max": 1.00,
     
-    # Exit Thresholds
-    "exit_up_threshold": 0.90,
-    "exit_down_threshold": 0.10,
+    # Exit Thresholds (Take Profit)
+    "exit_up_threshold": 0.90,      # Exit UP trade when price reaches this
+    "exit_down_threshold": 0.10,    # Exit DOWN trade when price reaches this
+    "take_profit_up": 0.90,         # Alias for exit_up_threshold
+    "take_profit_down": 0.10,       # Alias for exit_down_threshold
     
     # Stop Loss (Risk Management)
     "stop_loss_pct": 0.05,  # 5% stop loss from entry
+    "stop_loss": 0.15,          # Stop loss percentage (15% loss triggers exit)
     
     # Time Window Settings
     "window_duration_minutes": 15,

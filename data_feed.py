@@ -82,13 +82,22 @@ class EnhancedRTDSClient:
                     logger.info("[RTDS] WebSocket connected successfully")
                     attempts = 0
                     
-                    # Subscribe to all markets
+                    # Subscribe using slug-based market subscription
+                    from config import market_ids
+                    channels = [
+                        {
+                            "name": "market",
+                            "market": market_ids[symbol]["slug"]
+                        }
+                        for symbol in ["BTC", "ETH", "SOL", "XRP"]
+                    ]
+                    
                     subscribe_msg = {
                         "type": "subscribe",
-                        "markets": [m.market_id for m in self.markets.values()]
+                        "channels": channels
                     }
                     await ws.send(json.dumps(subscribe_msg))
-                    logger.info(f"[RTDS] Subscribed to {len(self.markets)} markets")
+                    logger.info(f"[RTDS] Subscribed to {len(channels)} market channels")
                     
                     # Listen for updates
                     async for message in ws:
