@@ -22,6 +22,25 @@ DEFAULT_CONFIG = {
     "tradeable_assets": ["SOL", "XRP"],
     "all_assets": ["BTC", "ETH", "SOL", "XRP"],
     
+    # MANUAL MARKET IDs (Copy from Polymarket website)
+    # Set use_manual_markets to True to use these IDs (API doesn't have crypto 15-min markets)
+    "use_manual_markets": True,  # ✓ ENABLED - API doesn't have BTC/XRP/SOL/ETH 15-min markets
+    
+    # Manual Market IDs Format: "asset": "market_id"
+    # Get these from: https://polymarket.com/markets
+    # Example: "market_id_goes_here_with_uuid_format"
+    "manual_markets": {
+        # UP/DOWN Markets for each asset
+        "BTC_UP": "867701",      # Paste BTC UP market ID here
+        "BTC_DOWN": "867701",    # Paste BTC DOWN market ID here
+        "ETH_UP": "867707",      # Paste ETH UP market ID here
+        "ETH_DOWN": "867707",    # Paste ETH DOWN market ID here
+        "SOL_UP": "867706",      # Paste SOL UP market ID here
+        "SOL_DOWN": "867706",    # Paste SOL DOWN market ID here
+        "XRP_UP": "867712",      # Paste XRP UP market ID here
+        "XRP_DOWN": "867712",    # Paste XRP DOWN market ID here
+    },
+    
     # Strategy Parameters - Zone Thresholds
     "zone_high_min": 0.75,
     "zone_high_max": 1.00,
@@ -58,7 +77,8 @@ DEFAULT_CONFIG = {
     "log_dir": "./logs",
     "trade_log_file": "trades.csv",
     "system_log_file": "bot.log",
-    "log_level": "INFO",
+    "log_level": "DEBUG",  # Changed to DEBUG for verbose logging
+    "debug_mode": True,  # Enable debug mode
     
     # Features
     "enable_paper_trading": True,
@@ -78,7 +98,11 @@ DEFAULT_CONFIG = {
     # CLOB Configuration
     "clob_timeout": 30,
     "clob_order_type": "limit",  # limit or market
-    "clob_slippage_percent": 0.5  # Max slippage tolerance
+    "clob_slippage_percent": 0.5,  # Max slippage tolerance
+    
+    # Option Price Configuration
+    "use_option_prices": True,  # Use Polymarket binary option prices instead of spot prices
+    "option_price_source": "polymarket_api"  # Where to fetch option prices
 }
 
 

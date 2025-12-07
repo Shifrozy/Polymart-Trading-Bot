@@ -87,35 +87,27 @@ class EnhancedLiveTrader:
         logger.info(f"Window: {self.config['window_duration_minutes']} minutes")
         logger.info(f"Entry window: {self.config['entry_window_min_remaining_seconds']}s - {self.config['entry_window_max_remaining_seconds']}s")
         logger.info(f"Stake size: ${self.config['stake_size_usd']}")
-        logger.info(f"Exit UP: >= {self.config['exit_up_threshold']}")
-        logger.info(f"Exit DOWN: <= {self.config['exit_down_threshold']}")
-        logger.info("="*60)
-    def _log_config(self):
-        """Log current configuration"""
-        logger.info("="*60)
-        logger.info("TRADING CONFIGURATION")
-        logger.info("="*60)
-        logger.info(f"Assets: {', '.join(self.config['all_assets'])}")
-        logger.info(f"Reference: {', '.join(self.config['reference_assets'])}")
-        logger.info(f"Tradeable: {', '.join(self.config['tradeable_assets'])}")
-        logger.info(f"Window: {self.config['window_duration_minutes']} minutes")
-        logger.info(f"Entry window: {self.config['entry_window_min_remaining_seconds']}s - {self.config['entry_window_max_remaining_seconds']}s")
-        logger.info(f"Stake size: ${self.config['stake_size_usd']}")
         logger.info(f"Stop Loss: {self.config['stop_loss_pct']*100:.1f}%")
         logger.info(f"Exit UP: >= {self.config['exit_up_threshold']}")
         logger.info(f"Exit DOWN: <= {self.config['exit_down_threshold']}")
         logger.info("="*60)
     
     def _calculate_stop_loss(self, side: str, entry_price: float) -> float:
-        """Calculate stop loss price"""
+        """
+        Calculate stop loss price
+        
+        For binary options (0-1 range):
+        - UP: Stop loss is entry_price - stop_loss_pct
+        - DOWN: Stop loss is entry_price + stop_loss_pct
+        """
         stop_loss_pct = self.config.get("stop_loss_pct", 0.05)
         
         if side == "UP":
-            # For UP trades, stop loss is below entry
-            stop_loss = entry_price * (1 - stop_loss_pct)
+            # For UP trades, stop loss is below entry (subtract percentage)
+            stop_loss = max(0.0, entry_price - stop_loss_pct)
         else:  # DOWN
-            # For DOWN trades, stop loss is above entry
-            stop_loss = entry_price * (1 + stop_loss_pct)
+            # For DOWN trades, stop loss is above entry (add percentage)
+            stop_loss = min(1.0, entry_price + stop_loss_pct)
         
         return stop_loss
     
@@ -147,14 +139,22 @@ class EnhancedLiveTrader:
         if window_id != self.current_window_id:
             await self._handle_new_window(window_id)
         
-        # Get latest prices
+        # Get latest prices (now returns option prices)
         all_assets = self.config["all_assets"]
         price_data = await self.data_feed.get_latest_prices(all_assets)
-        prices = {asset: data.price for asset, data in price_data.items()}
+        
+        # Convert to option price format: {"BTC": {"UP": 0.45, "DOWN": 0.55}, ...}
+        prices = {}
+        for asset, data in price_data.items():
+            if asset not in prices:
+                prices[asset] = {"UP": 0.5, "DOWN": 0.5}
+            # For now, use the price as UP price (mock data)
+            prices[asset]["UP"] = data.price
+            prices[asset]["DOWN"] = 1.0 - data.price
         
         # Log prices periodically
         if int(time_remaining) % 60 == 0:  # Every minute
-            price_str = ", ".join([f"{k}={v:.3f}" for k, v in sorted(prices.items())])
+            price_str = ", ".join([f"{k}={v['UP']:.3f}" for k, v in sorted(prices.items())])
             logger.info(f"[PRICES] {price_str} | Window: {window_id} | Remaining: {time_remaining:.0f}s")
         
         # Check for actions
@@ -254,11 +254,20 @@ class EnhancedLiveTrader:
         if not self.current_position:
             return
         
-        current_price = prices.get(self.current_position.asset)
+        price_data = prices.get(self.current_position.asset)
         
-        if current_price is None:
+        if price_data is None:
             logger.warning(f"[WARNING] No price for {self.current_position.asset}")
             return
+        
+        # Extract the correct option price based on position side
+        if isinstance(price_data, dict):
+            if self.current_position.side == "UP":
+                current_price = price_data.get("UP", 0.5)
+            else:
+                current_price = price_data.get("DOWN", 0.5)
+        else:
+            current_price = price_data
         
         # Check STOP LOSS first (most important)
         if self._check_stop_loss(current_price):

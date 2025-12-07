@@ -18,18 +18,20 @@ logger = logging.getLogger(__name__)
 class PriceData:
     """Normalized price data model"""
     
-    def __init__(self, timestamp: datetime, asset: str, price: float, source: str = "mock"):
+    def __init__(self, timestamp: datetime, asset: str, price: float, source: str = "mock", contract_type: str = "SPOT"):
         self.timestamp = timestamp
         self.asset = asset
         self.price = price
         self.source = source
+        self.contract_type = contract_type  # "SPOT", "UP", or "DOWN"
     
     def to_dict(self):
         return {
             "timestamp": self.timestamp.isoformat(),
             "asset": self.asset,
             "price": self.price,
-            "source": self.source
+            "source": self.source,
+            "contract_type": self.contract_type
         }
 
 

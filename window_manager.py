@@ -28,6 +28,14 @@ class WindowManager:
         
         return window_start, window_end
     
+    def get_window_id(self, current_time: datetime = None):
+        """Get unique ID for current window (format: YYYYMMDD_HHMM)"""
+        if current_time is None:
+            current_time = datetime.utcnow()
+        
+        window_start, _ = self.get_current_window(current_time)
+        return window_start.strftime("%Y%m%d_%H%M")
+    
     def get_time_remaining(self, current_time: datetime = None):
         """Get seconds remaining until window expiry"""
         if current_time is None:
@@ -49,41 +57,29 @@ class WindowManager:
         Returns:
             bool: True if within entry window
         """
-        remaining = self.get_time_remaining(current_time)
-        eligible = min_remaining <= remaining <= max_remaining
+        time_remaining = self.get_time_remaining(current_time)
         
-        if not eligible:
-            logger.debug(f"Entry not eligible: {remaining:.0f}s remaining (need {min_remaining}-{max_remaining}s)")
-        
-        return eligible
+        # Entry eligible if between min and max remaining
+        return min_remaining <= time_remaining <= max_remaining
     
-    def get_window_id(self, current_time: datetime = None):
-        """Get unique identifier for current window"""
-        window_start, _ = self.get_current_window(current_time)
-        return window_start.strftime("%Y%m%d_%H%M")
+    def format_time_remaining(self, seconds: float) -> str:
+        """Format remaining seconds as MM:SS"""
+        minutes = int(seconds) // 60
+        secs = int(seconds) % 60
+        return f"{minutes}:{secs:02d}"
 
 
-# Test the WindowManager
 if __name__ == "__main__":
+    # Test the window manager
     wm = WindowManager(15)
     
-    print("Testing WindowManager:")
-    print("=" * 50)
-    
     now = datetime.utcnow()
-    print(f"Current time: {now.strftime('%Y-%m-%d %H:%M:%S')}")
-    
-    window_start, window_end = wm.get_current_window(now)
-    print(f"Window start: {window_start.strftime('%H:%M:%S')}")
-    print(f"Window end:   {window_end.strftime('%H:%M:%S')}")
-    
-    remaining = wm.get_time_remaining(now)
-    print(f"Time remaining: {remaining:.0f} seconds")
-    
+    start, end = wm.get_current_window(now)
     window_id = wm.get_window_id(now)
-    print(f"Window ID: {window_id}")
+    remaining = wm.get_time_remaining(now)
     
-    is_eligible = wm.is_entry_eligible(now, 300, 90)
-    print(f"Entry eligible: {is_eligible}")
-    
-    print("=" * 50)
+    print(f"Current Window ID: {window_id}")
+    print(f"Window Start: {start}")
+    print(f"Window End: {end}")
+    print(f"Time Remaining: {wm.format_time_remaining(remaining)}")
+    print(f"Entry Eligible (90-300s): {wm.is_entry_eligible(now, 300, 90)}")

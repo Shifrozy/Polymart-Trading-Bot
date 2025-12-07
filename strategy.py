@@ -61,10 +61,11 @@ class EnhancedPolymarketStrategy:
     
     def evaluate_signal(self, prices: Dict[str, float]) -> SignalResult:
         """
-        Evaluate trading signal
+        Evaluate trading signal using option prices
         
         Args:
-            prices: Current prices for all assets
+            prices: Current option prices for all assets
+                   Format: {"BTC": {"UP": 0.45, "DOWN": 0.55}, ...}
         
         Returns:
             SignalResult with signal details
@@ -80,9 +81,17 @@ class EnhancedPolymarketStrategy:
                 f"Missing prices: {missing}"
             )
         
-        # Try Group G1: BTC + ETH + SOL → XRP laggard
+        # Extract UP prices for all assets
+        up_prices = {}
+        for asset in required:
+            if isinstance(prices[asset], dict):
+                up_prices[asset] = prices[asset].get("UP", 0.5)
+            else:
+                up_prices[asset] = prices[asset]
+        
+        # Try Group G1: BTC + ETH + SOL UP → XRP UP laggard
         g1_result = self._evaluate_group(
-            prices,
+            up_prices,
             self.reference_assets + [self.tradeable_assets[0]],  # BTC, ETH, SOL
             self.tradeable_assets[1],  # XRP
             "G1"
@@ -91,9 +100,9 @@ class EnhancedPolymarketStrategy:
         if g1_result.signal:
             return g1_result
         
-        # Try Group G2: BTC + ETH + XRP → SOL laggard
+        # Try Group G2: BTC + ETH + XRP UP → SOL UP laggard
         g2_result = self._evaluate_group(
-            prices,
+            up_prices,
             self.reference_assets + [self.tradeable_assets[1]],  # BTC, ETH, XRP
             self.tradeable_assets[0],  # SOL
             "G2"

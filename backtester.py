@@ -173,8 +173,16 @@ class EnhancedBacktester:
         if not is_eligible:
             return
         
-        # Evaluate signal
-        signal = self.strategy.evaluate_signal(prices)
+        # Convert to option price format: {"BTC": {"UP": 0.45, "DOWN": 0.55}, ...}
+        option_prices = {}
+        for asset, price in prices.items():
+            option_prices[asset] = {
+                "UP": price,
+                "DOWN": 1.0 - price
+            }
+        
+        # Evaluate signal using option prices
+        signal = self.strategy.evaluate_signal(option_prices)
         
         if signal.signal:
             self.current_position = {
