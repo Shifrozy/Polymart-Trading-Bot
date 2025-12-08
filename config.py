@@ -11,32 +11,43 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# MARKET IDs - USER CONFIGURABLE (LEAVE EMPTY, FILL MANUALLY)
+# OUTCOME TOKEN IDs - FOR POLYMARKET REST API (CLOB)
+# Use these token IDs with /book/{token_id} endpoint
 # ============================================================================
-market_ids = {
+token_ids = {
     "BTC": {
-        "market": "867701",
-        "slug": "btc-updown-15m-1765131300"
+        "UP": "66038287215890902308888022638889475273395092363836087269678068110021858156648",
+        "DOWN": "103736301177420012592320756893752824132956570096134589428831120153109826660755"
     },
     "ETH": {
-        "market": "868690",
-        "slug": "eth-updown-15m-1765133100"
+        "UP": "57995765023585666718727150194750622889813779456273400981588983759191955033144",
+        "DOWN": "3639797258768016381237579543449261711138697569659109625668725571803769463262"
     },
     "SOL": {
-        "market": "867706",
-        "slug": "sol-updown-15m-1765131300"
+        "UP": "52328714600104229546390380354441519349874125025906522988530238020239088174044",
+        "DOWN": "39933503558385015914289762491228362184238641888596621368453967761737601596187"
     },
     "XRP": {
-        "market": "867712",
-        "slug": "xrp-updown-15m-1765131300"
+        "UP": "48988861509767422484522913913854887067820166776431772333129413184941316402573",
+        "DOWN": "105285928363950595778514602652823084905785150830825451641572836667938691733559"
     }
 }
 
 DEFAULT_CONFIG = {
+    # Outcome Token IDs for REST API /book endpoint
+    "token_ids": token_ids,  # Import from above
+    
     # API Configuration
     "polymarket_api_url": "https://gamma-api.polymarket.com",
     "polymarket_clob_url": "https://clob.polymarket.com",
-    "polymarket_rtds_url": "wss://clob.polymarket.com/ws",
+    "polymarket_rtds_url": "wss://clob.polymarket.com/ws",  # Deprecated - using REST instead
+    
+    # REST API Configuration (REPLACES WEBSOCKET)
+    "use_websocket": False,  # Disable WebSocket, use REST polling
+    "rest_poll_interval": 1.0,  # Poll prices every N seconds
+    "poll_timeout_seconds": 10,  # Timeout for each poll request
+    "poll_max_retries": 3,  # Max retries on failure
+    "poll_retry_delay_seconds": 0.5,  # Delay between retries
     
     # Market Configuration
     "market_interval": "15m",  # 15-minute markets
@@ -46,21 +57,20 @@ DEFAULT_CONFIG = {
     
     # MANUAL MARKET IDs (Copy from Polymarket website)
     # Set use_manual_markets to True to use these IDs (API doesn't have crypto 15-min markets)
-    "use_manual_markets": True,  # ✓ ENABLED - API doesn't have BTC/XRP/SOL/ETH 15-min markets
+    "use_manual_markets": True,  # ✓ ENABLED - Using outcome token IDs
     
-    # Manual Market IDs Format: "asset": "market_id"
-    # Get these from: https://polymarket.com/markets
-    # Example: "market_id_goes_here_with_uuid_format"
+    # Manual Market IDs Format: "asset_DIRECTION": "token_id"
+    # Token IDs from Polymarket outcome tokens (see token_ids above)
     "manual_markets": {
-        # UP/DOWN Markets for each asset
-        "BTC_UP": "867701",      # BTC market ID
-        "BTC_DOWN": "867701",    # BTC market ID (same)
-        "ETH_UP": "868690",      # ETH market ID
-        "ETH_DOWN": "868690",    # ETH market ID (same)
-        "SOL_UP": "867706",      # SOL market ID
-        "SOL_DOWN": "867706",    # SOL market ID (same)
-        "XRP_UP": "867712",      # XRP market ID
-        "XRP_DOWN": "867712",    # XRP market ID (same)
+        # Outcome token IDs for each asset direction
+        "BTC_UP": token_ids["BTC"]["UP"],
+        "BTC_DOWN": token_ids["BTC"]["DOWN"],
+        "ETH_UP": token_ids["ETH"]["UP"],
+        "ETH_DOWN": token_ids["ETH"]["DOWN"],
+        "SOL_UP": token_ids["SOL"]["UP"],
+        "SOL_DOWN": token_ids["SOL"]["DOWN"],
+        "XRP_UP": token_ids["XRP"]["UP"],
+        "XRP_DOWN": token_ids["XRP"]["DOWN"],
     },
     
     # Strategy Parameters - Zone Thresholds
